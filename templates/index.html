@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zomato Menu Scraper</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 40px;
+            color: #333;
+        }
+        h1 {
+            color: #dc3545;
+            text-align: center;
+        }
+        form {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            width: 60%;
+            max-width: 600px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        button:hover {
+            background-color: #c82333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            margin-top: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #dee2e6;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f1f1f1;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .download-btn {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍽 Zomato Menu Scraper</h1>
+
+    <form method="post">
+        <input type="text" name="url" placeholder="Enter Zomato restaurant URL" required>
+        <button type="submit">Scrape Menu</button>
+    </form>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if menu_items %}
+        <h2 style="text-align:center;">Menu for {{ restaurant_name }}</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Sub-category</th>
+                    <th>Item Name</th>
+                    <th>Price</th>
+                    <th>Description</th>
+                    <th>Dietary</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in menu_items %}
+                    <tr>
+                        <td>{{ item.category }}</td>
+                        <td>{{ item.sub_category }}</td>
+                        <td>{{ item.item_name }}</td>
+                        <td>{{ item.price }}</td>
+                        <td>{{ item.desc }}</td>
+                        <td>{{ item.dietary_slugs }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="download-btn">
+            <form method="post" action="/download_csv">
+                <input type="hidden" name="csv_data" value='{{ menu_items | tojson }}'>
+                <input type="hidden" name="restaurant_name" value='{{ restaurant_name }}'>
+                <button type="submit">📥 Download as CSV</button>
+            </form>
+        </div>
+    {% endif %}
+</body>
+</html>
