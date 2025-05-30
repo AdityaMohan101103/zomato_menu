@@ -16,6 +16,9 @@ user_agents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
     'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:116.0) Gecko/20100101 Firefox/116.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.198 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36',
 ]
 
 def extract_needed_data(json_data):
@@ -50,7 +53,7 @@ def extract_needed_data(json_data):
 
     return filtered_data, name
 
-def get_menu(url, retries=3):
+def get_menu(url, retries=5):
     if not url.endswith('/order'):
         url += '/order'
 
@@ -65,16 +68,34 @@ def get_menu(url, retries=3):
         'Upgrade-Insecure-Requests': '1'
     }
 
-    time.sleep(random.uniform(2.5, 5.0))
+    # Optional proxy support; uncomment and set your proxies if needed
+    proxies = {
+        # 'http': 'http://your_proxy_here',
+        # 'https': 'http://your_proxy_here',
+    }
+
+    # Random delay before first attempt
+    time.sleep(random.uniform(3, 6))
 
     for attempt in range(retries):
         try:
-            response = requests.get(url, headers=headers, timeout=15)
+            response = requests.get(url, headers=headers, timeout=15, proxies=proxies if proxies else None)
+            print(f"[Attempt {attempt+1}] Status Code: {response.status_code}")
+
+            if response.status_code == 403:
+                print("Blocked by server (403 Forbidden). Retrying after delay...")
+                time.sleep(10 + random.uniform(5, 10))
+                continue
+            if response.status_code == 429:
+                print("Rate limited (429 Too Many Requests). Retrying after delay...")
+                time.sleep(20 + random.uniform(10, 20))
+                continue
+
             response.raise_for_status()
             break
         except requests.RequestException as e:
-            wait = (2 ** attempt) + random.uniform(0.5, 1.5)
-            print(f"Retry {attempt + 1}/{retries} failed: {e}. Retrying in {wait:.1f}s.")
+            wait = (2 ** attempt) + random.uniform(1, 3)
+            print(f"Retry {attempt + 1}/{retries} failed: {e}. Waiting {wait:.1f}s before retrying.")
             time.sleep(wait)
     else:
         return None, None, "Failed to fetch the page after multiple attempts."
@@ -117,10 +138,7 @@ def index():
 @app.route("/download_csv", methods=["POST"])
 def download_csv():
     data = request.form.get("csv_data")
-    restaurant_name = request.form.get("restaurant_name", "menu")
-
-    # Sanitize restaurant name for filename
-    restaurant_name = re.sub(r'[^\w\s-]', '', restaurant_name).strip().replace(' ', '_')
+    restaurant_name = request.form.get("restaurant_name", "menu").replace(" ", "_")
 
     if not data:
         return "No data to download", 400
@@ -135,7 +153,7 @@ def download_csv():
 
     output.seek(0)
     return send_file(
-        io.BytesIO(output.getvalue().encode('utf-8')),
+        io.BytesIO(output.getvalue().encode()),
         mimetype='text/csv',
         as_attachment=True,
         download_name=f"{restaurant_name}_menu.csv"
